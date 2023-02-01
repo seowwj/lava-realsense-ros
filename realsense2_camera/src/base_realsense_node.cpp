@@ -597,6 +597,11 @@ void BaseRealSenseNode::frame_callback(rs2::frame frame)
                             _depth_aligned_info_publisher,
                             _depth_aligned_image_publishers,
                             false);
+                    ddspublishFrame(f, t, COLOR,
+                            _depth_aligned_image,
+                            _depth_aligned_info_publisher,
+                            _depth_aligned_image_dds_publishers,
+                            false);
                     continue;
                 }
             }
@@ -604,6 +609,10 @@ void BaseRealSenseNode::frame_callback(rs2::frame frame)
                         _image,
                         _info_publisher,
                         _image_publishers);
+            ddspublishFrame(f, t, sip,
+                        _image,
+                        _info_publisher,
+                        _image_dds_publishers);
         }
         if (original_depth_frame && _align_depth_filter->is_enabled())
         {
@@ -618,6 +627,11 @@ void BaseRealSenseNode::frame_callback(rs2::frame frame)
                         _image,
                         _info_publisher,
                         _image_publishers);
+            ddspublishFrame(frame_to_send, t,
+                        DEPTH,
+                        _image,
+                        _info_publisher,
+                        _image_dds_publishers);
         }
     }
     else if (frame.is<rs2::video_frame>())
@@ -640,6 +654,11 @@ void BaseRealSenseNode::frame_callback(rs2::frame frame)
                     _image,
                     _info_publisher,
                     _image_publishers);
+        ddspublishFrame(frame, t,
+                    sip,
+                    _image,
+                    _info_publisher,
+                    _image_dds_publishers);
     }
     _synced_imu_publisher->Resume();
 } // frame_callback
@@ -1118,6 +1137,97 @@ void BaseRealSenseNode::publishFrame(rs2::frame f, const rclcpp::Time& t,
         // Transfer the unique pointer ownership to the RMW
         sensor_msgs::msg::Image* msg_address = img.get();
         image_publisher->publish(std::move(img));
+
+        ROS_DEBUG_STREAM(rs2_stream_to_string(f.get_profile().stream_type()) << " stream published, message address: " << std::hex << msg_address);
+    }
+    if (is_publishMetadata)
+    {
+        publishMetadata(f, t, OPTICAL_FRAME_ID(stream));
+    }
+}
+
+void BaseRealSenseNode::ddspublishFrame(rs2::frame f, const rclcpp::Time& t,
+                                     const stream_index_pair& stream,
+                                     std::map<stream_index_pair, cv::Mat>& images,
+                                     const std::map<stream_index_pair, rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr>& info_publishers,
+                                     const std::map<stream_index_pair, std::shared_ptr<image_dds_publisher>>& image_dds_publishers,
+                                     const bool is_publishMetadata)
+{
+    ROS_DEBUG("ddspublishFrame(...)");
+    unsigned int width = 0;
+    unsigned int height = 0;
+    unsigned int bpp = 1;
+    if (f.is<rs2::video_frame>())
+    {
+        auto timage = f.as<rs2::video_frame>();
+        width = timage.get_width();
+        height = timage.get_height();
+        bpp = timage.get_bytes_per_pixel();
+    }
+    auto& image = images[stream];
+
+    if (image.size() != cv::Size(width, height) || image.depth() != _image_format[bpp])
+    {
+        image.create(height, width, _image_format[bpp]);
+    }
+    image.data = (uint8_t*)f.get_data();
+
+    if (f.is<rs2::depth_frame>())
+    {
+        image = fix_depth_scale(image, _depth_scaled_image[stream]);
+    }
+
+    if (info_publishers.find(stream) == info_publishers.end() ||
+        image_dds_publishers.find(stream) == image_dds_publishers.end())
+        {
+            // Stream is already disabled.
+            return;
+        }
+    auto& info_publisher = info_publishers.at(stream);
+    auto& image_dds_publisher = image_dds_publishers.at(stream);
+    if(0 != info_publisher->get_subscription_count() ||
+       0 != image_dds_publisher->get_subscription_count())
+    {
+        auto& cam_info = _camera_info.at(stream);
+        if (cam_info.width != width)
+        {
+            updateStreamCalibData(f.get_profile().as<rs2::video_stream_profile>());
+        }
+        cam_info.header.stamp = t;
+        info_publisher->publish(cam_info);
+
+        // Prepare image topic to be published
+        // We use UniquePtr for allow intra-process publish when subscribers of that type are available
+        ddsmetadata::msg::DDSMetaData::UniquePtr img(new ddsmetadata::msg::DDSMetaData());
+        sensor_msgs::msg::Image::UniquePtr tmp_img(new sensor_msgs::msg::Image());
+
+        if (!img)
+        {
+            ROS_ERROR("sensor image message allocation failed, frame was dropped");
+            return;
+        }
+
+        // Convert the CV::Mat into a ROS image message (1 copy is done here)
+        cv_bridge::CvImage(std_msgs::msg::Header(), _encoding.at(bpp), image).toImageMsg(*tmp_img);
+
+        // Convert OpenCV Mat to ROS Image
+        img->nd = 1;
+        img->type = 2;
+        img->elsize = 1;
+        img->total_size =height*width*3;
+        img->dims[0] = img->total_size;
+        img->strides[0] = 1;
+        for (int i = 1; i < 5; i++) {
+            img->dims[i] = 0;
+            img->strides[i] = 0;
+        }
+        img->mdata = std::vector<unsigned char>(
+                               &tmp_img->data[0],
+                               &tmp_img->data[0] +
+                               img->total_size);
+        // Transfer the unique pointer ownership to the RMW
+        ddsmetadata::msg::DDSMetaData* msg_address = img.get();
+        image_dds_publisher->publish(std::move(img));
 
         ROS_DEBUG_STREAM(rs2_stream_to_string(f.get_profile().stream_type()) << " stream published, message address: " << std::hex << msg_address);
     }

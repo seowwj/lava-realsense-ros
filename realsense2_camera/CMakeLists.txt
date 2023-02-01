@@ -100,6 +100,7 @@ find_package(nav_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(diagnostic_updater REQUIRED)
+find_package(ddsmetadata REQUIRED)
 
 find_package(realsense2 2.51.1)
 if(NOT realsense2_FOUND)
@@ -204,6 +205,7 @@ set(dependencies
   realsense2
   tf2_ros
   diagnostic_updater
+  ddsmetadata
 )
 
 ament_target_dependencies(${PROJECT_NAME}

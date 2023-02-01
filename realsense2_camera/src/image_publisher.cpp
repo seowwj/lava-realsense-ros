@@ -42,3 +42,42 @@ size_t image_transport_publisher::get_subscription_count() const
 {
     return image_publisher_impl->getNumSubscribers();
 }
+
+// --- image_rcl_dds_publisher implementation ---
+image_rcl_dds_publisher::image_rcl_dds_publisher( rclcpp::Node & node,
+                                          const std::string & topic_name,
+                                          const rmw_qos_profile_t & qos )
+{
+    image_dds_publisher_impl = node.create_publisher< ddsmetadata::msg::DDSMetaData >(
+        topic_name,
+        rclcpp::QoS( rclcpp::QoSInitialization::from_rmw( qos ), qos ) );
+}
+
+void image_rcl_dds_publisher::publish( ddsmetadata::msg::DDSMetaData::UniquePtr image_ptr )
+{
+    image_dds_publisher_impl->publish( std::move( image_ptr ) );
+}
+
+size_t image_rcl_dds_publisher::get_subscription_count() const
+{
+    return image_dds_publisher_impl->get_subscription_count();
+}
+
+// --- image_transport_dds_publisher implementation ---
+image_transport_dds_publisher::image_transport_dds_publisher( rclcpp::Node & node,
+                                                      const std::string & topic_name,
+                                                      const rmw_qos_profile_t & qos )
+{
+    image_dds_publisher_impl = node.create_publisher< ddsmetadata::msg::DDSMetaData >(
+        topic_name,
+        rclcpp::QoS( rclcpp::QoSInitialization::from_rmw( qos ), qos ) );
+}
+void image_transport_dds_publisher::publish( ddsmetadata::msg::DDSMetaData::UniquePtr image_ptr )
+{
+    image_dds_publisher_impl->publish( *image_ptr );
+}
+
+size_t image_transport_dds_publisher::get_subscription_count() const
+{
+    return image_dds_publisher_impl->get_subscription_count();
+}

@@ -5,6 +5,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include "ddsmetadata/msg/dds_meta_data.hpp"
 
 #if defined( DASHING ) || defined( ELOQUENT )
 #include <image_transport/image_transport.h>
@@ -49,4 +50,38 @@ private:
     std::shared_ptr< image_transport::Publisher > image_publisher_impl;
 };
 
+//  dds_publisher
+class image_dds_publisher
+{
+public:
+    virtual void publish( ddsmetadata::msg::DDSMetaData::UniquePtr image_ptr ) = 0;
+    virtual size_t get_subscription_count() const = 0;
+    virtual ~image_dds_publisher() = default;
+};
+
+class image_rcl_dds_publisher : public image_dds_publisher
+{
+public:
+    image_rcl_dds_publisher( rclcpp::Node & node,
+                         const std::string & topic_name,
+                         const rmw_qos_profile_t & qos );
+    void publish( ddsmetadata::msg::DDSMetaData::UniquePtr image_ptr ) override;
+    size_t get_subscription_count() const override;
+
+private:
+    rclcpp::Publisher< ddsmetadata::msg::DDSMetaData >::SharedPtr image_dds_publisher_impl;
+};
+
+class image_transport_dds_publisher : public image_dds_publisher
+{
+public:
+    image_transport_dds_publisher( rclcpp::Node & node,
+                               const std::string & topic_name,
+                               const rmw_qos_profile_t & qos );
+    void publish( ddsmetadata::msg::DDSMetaData::UniquePtr image_ptr ) override;
+    size_t get_subscription_count() const override;
+
+private:
+    rclcpp::Publisher< ddsmetadata::msg::DDSMetaData >::SharedPtr image_dds_publisher_impl;
+};
 }  // namespace realsense2_camera

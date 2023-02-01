@@ -201,23 +201,25 @@ void BaseRealSenseNode::startPublishers(const std::vector<stream_profile>& profi
 
         if (profile.is<rs2::video_stream_profile>())
         {
-            std::stringstream image_raw, camera_info;
+            std::stringstream image_raw, image_dds_raw, camera_info;
             bool rectified_image = false;
             if (sensor.rs2::sensor::is<rs2::depth_sensor>())
                 rectified_image = true;
 
             image_raw << stream_name << "/image_" << ((rectified_image)?"rect_":"") << "raw";
             camera_info << stream_name << "/camera_info";
-
+            image_dds_raw << stream_name << "/image_" << ((rectified_image)?"rect_":"") << "raw_dds";
             // We can use 2 types of publishers:
             // Native RCL publisher that support intra-process zero-copy comunication
             // image-transport package publisher that adds a commpressed image topic if package is found installed
             if (_use_intra_process)
             {
+                _image_dds_publishers[sip] = std::make_shared<image_rcl_dds_publisher>(_node, image_dds_raw.str(), qos);
                 _image_publishers[sip] = std::make_shared<image_rcl_publisher>(_node, image_raw.str(), qos);
             }
             else
             {
+                _image_dds_publishers[sip] = std::make_shared<image_transport_dds_publisher>(_node, image_dds_raw.str(), qos);
                 _image_publishers[sip] = std::make_shared<image_transport_publisher>(_node, image_raw.str(), qos);
                 ROS_DEBUG_STREAM("image transport publisher was created for topic" << image_raw.str());
             }
@@ -227,10 +229,10 @@ void BaseRealSenseNode::startPublishers(const std::vector<stream_profile>& profi
 
             if (_align_depth_filter->is_enabled() && (sip != DEPTH) && sip.second < 2)
             {
-                std::stringstream aligned_image_raw, aligned_camera_info;
+                std::stringstream aligned_image_raw, aligned_image_raw_dds, aligned_camera_info;
                 aligned_image_raw << "aligned_depth_to_" << stream_name << "/image_raw";
                 aligned_camera_info << "aligned_depth_to_" << stream_name << "/camera_info";
-
+                aligned_image_raw_dds<< "aligned_depth_to_" << stream_name << "/image_raw_dds";
                 std::string aligned_stream_name = "aligned_depth_to_" + stream_name;
 
                 // We can use 2 types of publishers:
@@ -238,10 +240,12 @@ void BaseRealSenseNode::startPublishers(const std::vector<stream_profile>& profi
                 // image-transport package publisher that add's a commpressed image topic if the package is installed
                 if (_use_intra_process)
                 {
+                    _depth_aligned_image_dds_publishers[sip] = std::make_shared<image_rcl_dds_publisher>(_node, aligned_image_raw_dds.str(), qos);
                     _depth_aligned_image_publishers[sip] = std::make_shared<image_rcl_publisher>(_node, aligned_image_raw.str(), qos);
                 }
                 else
                 {
+                    _depth_aligned_image_dds_publishers[sip] = std::make_shared<image_transport_dds_publisher>(_node, aligned_image_raw_dds.str(), qos);
                     _depth_aligned_image_publishers[sip] = std::make_shared<image_transport_publisher>(_node, aligned_image_raw.str(), qos);
                     ROS_DEBUG_STREAM("image transport publisher was created for topic" << image_raw.str());
                 }

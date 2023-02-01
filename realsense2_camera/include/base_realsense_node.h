@@ -56,6 +56,7 @@ namespace realsense2_camera
 
     const std::vector<stream_index_pair> HID_STREAMS = {GYRO, ACCEL, POSE};
     class image_publisher; // forward declaration
+    class image_dds_publisher;
 
     class PipelineSyncer : public rs2::asynchronous_syncer
     {
@@ -195,6 +196,13 @@ namespace realsense2_camera
                           const std::map<stream_index_pair, rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr>& info_publishers,
                           const std::map<stream_index_pair, std::shared_ptr<image_publisher>>& image_publishers,
                           const bool is_publishMetadata = true);
+        void ddspublishFrame(rs2::frame f, const rclcpp::Time& t,
+                          const stream_index_pair& stream,
+                          std::map<stream_index_pair, cv::Mat>& images,
+                          const std::map<stream_index_pair, rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr>& info_publishers,
+                          const std::map<stream_index_pair, std::shared_ptr<image_dds_publisher>>& image_dds_publishers,
+                          const bool is_publishMetadata = true);
+
         void publishMetadata(rs2::frame f, const rclcpp::Time& header_time, const std::string& frame_id);
 
         sensor_msgs::msg::Imu CreateUnitedMessage(const CimuData accel_data, const CimuData gyro_data);
@@ -247,7 +255,8 @@ namespace realsense2_camera
 
         bool _use_intra_process;      
         std::map<stream_index_pair, std::shared_ptr<image_publisher>> _image_publishers;
-        
+        std::map<stream_index_pair, std::shared_ptr<image_dds_publisher>> _image_dds_publishers;
+
         std::map<stream_index_pair, rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr> _imu_publishers;
         std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Odometry>> _odom_publisher;
         std::shared_ptr<SyncedImuPublisher> _synced_imu_publisher;
@@ -285,6 +294,7 @@ namespace realsense2_camera
         std::map<stream_index_pair, cv::Mat> _depth_scaled_image;
         std::map<stream_index_pair, rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr> _depth_aligned_info_publisher;
         std::map<stream_index_pair, std::shared_ptr<image_publisher>> _depth_aligned_image_publishers;
+        std::map<stream_index_pair, std::shared_ptr<image_dds_publisher>> _depth_aligned_image_dds_publishers;
         std::map<std::string, rs2::region_of_interest> _auto_exposure_roi;
         std::map<rs2_stream, bool> _is_first_frame;
 
