@@ -1209,7 +1209,7 @@ void BaseRealSenseNode::ddspublishFrame(rs2::frame f, const rclcpp::Time& t,
 
         // Convert the CV::Mat into a ROS image message (1 copy is done here)
         cv_bridge::CvImage(std_msgs::msg::Header(), _encoding.at(bpp), image).toImageMsg(*tmp_img);
-
+        int64_t time = t.nanoseconds();//get the time from  rclcpp::Time
         // Convert OpenCV Mat to ROS Image
         img->nd = 1;
         img->type = 2;
@@ -1225,7 +1225,7 @@ void BaseRealSenseNode::ddspublishFrame(rs2::frame f, const rclcpp::Time& t,
         char* ptr = reinterpret_cast<char*> (malloc(16));
         memcpy(ptr, &height, 4);
         memcpy(ptr+4, &width, 4);
-        memcpy(ptr+8, &t, 8);
+        memcpy(ptr+8, &time, 8);
         img->mdata = std::vector<unsigned char>(ptr,ptr+16);
         std::reverse(img->mdata.begin(), img->mdata.end());
         img->mdata.insert(img->mdata.begin()+16,tmp_img->data.begin(), tmp_img->data.end());
