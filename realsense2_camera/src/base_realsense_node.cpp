@@ -1214,17 +1214,21 @@ void BaseRealSenseNode::ddspublishFrame(rs2::frame f, const rclcpp::Time& t,
         img->nd = 1;
         img->type = 2;
         img->elsize = 1;
-        img->total_size =height*width*3;
+        img->total_size =16+height*width*3;
         img->dims[0] = img->total_size;
         img->strides[0] = 1;
         for (int i = 1; i < 5; i++) {
             img->dims[i] = 0;
             img->strides[i] = 0;
         }
-        img->mdata = std::vector<unsigned char>(
-                               &tmp_img->data[0],
-                               &tmp_img->data[0] +
-                               img->total_size);
+        // publish  stamp+width+height+data
+        char* ptr = reinterpret_cast<char*> (malloc(16));
+        memcpy(ptr, &height, 4);
+        memcpy(ptr+4, &width, 4);
+        memcpy(ptr+8, &t, 8);
+        img->mdata = std::vector<unsigned char>(ptr,ptr+16);
+        std::reverse(img->mdata.begin(), img->mdata.end());
+        img->mdata.insert(img->mdata.begin()+16,tmp_img->data.begin(), tmp_img->data.end());
         // Transfer the unique pointer ownership to the RMW
         ddsmetadata::msg::DDSMetaData* msg_address = img.get();
         image_dds_publisher->publish(std::move(img));
