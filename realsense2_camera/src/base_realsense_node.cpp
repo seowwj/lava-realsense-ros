@@ -1210,25 +1210,30 @@ void BaseRealSenseNode::ddspublishFrame(rs2::frame f, const rclcpp::Time& t,
         // Convert the CV::Mat into a ROS image message (1 copy is done here)
         cv_bridge::CvImage(std_msgs::msg::Header(), _encoding.at(bpp), image).toImageMsg(*tmp_img);
         int64_t time = t.nanoseconds();//get the time from  rclcpp::Time
+        int image_channel=0;
+        if(stream == COLOR) image_channel=3;
+        else if(stream == DEPTH) image_channel=1;
         // Convert OpenCV Mat to ROS Image
         img->nd = 1;
         img->type = 2;
         img->elsize = 1;
-        img->total_size =16+height*width*3;
+        if(stream == COLOR) img->total_size =20+height*width*image_channel;
+        if(stream == DEPTH) img->total_size =20+height*width*image_channel*2;
         img->dims[0] = img->total_size;
         img->strides[0] = 1;
         for (int i = 1; i < 5; i++) {
             img->dims[i] = 0;
             img->strides[i] = 0;
         }
-        // publish  stamp+width+height+data
-        char* ptr = reinterpret_cast<char*> (malloc(16));
+        // publish  stamp+channel+width+height+data
+        char* ptr = reinterpret_cast<char*> (malloc(20));
         memcpy(ptr, &height, 4);
         memcpy(ptr+4, &width, 4);
-        memcpy(ptr+8, &time, 8);
-        img->mdata = std::vector<unsigned char>(ptr,ptr+16);
+        memcpy(ptr+8, &image_channel, 4);
+        memcpy(ptr+12, &time, 8);
+        img->mdata = std::vector<unsigned char>(ptr,ptr+20);
         std::reverse(img->mdata.begin(), img->mdata.end());
-        img->mdata.insert(img->mdata.begin()+16,tmp_img->data.begin(), tmp_img->data.end());
+        img->mdata.insert(img->mdata.begin()+20,tmp_img->data.begin(), tmp_img->data.end());
         // Transfer the unique pointer ownership to the RMW
         ddsmetadata::msg::DDSMetaData* msg_address = img.get();
         image_dds_publisher->publish(std::move(img));
