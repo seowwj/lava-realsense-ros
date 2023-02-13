@@ -1227,17 +1227,16 @@ void BaseRealSenseNode::ddspublishFrame(rs2::frame f, const rclcpp::Time& t,
         }
         // publish  stamp+channel+width+height+data
         char* ptr = reinterpret_cast<char*> (malloc(20));
-        memcpy(ptr, &height, 4);
-        memcpy(ptr+4, &width, 4);
+        memcpy(ptr+0, &time, 8);
         memcpy(ptr+8, &image_channel, 4);
-        memcpy(ptr+12, &time, 8);
+        memcpy(ptr+12, &width, 4);
+        memcpy(ptr+16, &height, 4);   
         img->mdata = std::vector<unsigned char>(ptr,ptr+20);
-        std::reverse(img->mdata.begin(), img->mdata.end());
         img->mdata.insert(img->mdata.begin()+20,tmp_img->data.begin(), tmp_img->data.end());
         // Transfer the unique pointer ownership to the RMW
         ddsmetadata::msg::DDSMetaData* msg_address = img.get();
         image_dds_publisher->publish(std::move(img));
-
+        free(ptr);
         ROS_DEBUG_STREAM(rs2_stream_to_string(f.get_profile().stream_type()) << " stream published, message address: " << std::hex << msg_address);
     }
     if (is_publishMetadata)
