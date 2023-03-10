@@ -633,6 +633,13 @@ void BaseRealSenseNode::frame_callback(rs2::frame frame)
                         _info_publisher,
                         _image_dds_publishers);
         }
+        // Combined Frames
+        // rs2::depth_frame aligned_depth_frame = frameset.get_depth_frame();
+        // rs2::video_frame color_frame = frameset.get_color_frame();
+        // // bool sent_depth_frame = false; // Reset flag to false so frame will be "resent"
+        // ROS_INFO("Frame Acquired");
+        // ROS_INFO("Depth frame units: (%f) | Distance: (%f)", aligned_depth_frame.get_units(), aligned_depth_frame.get_distance(10,10));
+        // ROS_INFO("Color frame width: (%d) | Height: (%d)", color_frame.get_width(), color_frame.get_height());
     }
     else if (frame.is<rs2::video_frame>())
     {
