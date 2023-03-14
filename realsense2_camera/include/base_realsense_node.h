@@ -202,6 +202,14 @@ namespace realsense2_camera
                           const std::map<stream_index_pair, rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr>& info_publishers,
                           const std::map<stream_index_pair, std::shared_ptr<image_dds_publisher>>& image_dds_publishers,
                           const bool is_publishMetadata = true);
+        void ddsPublishCombineFrame(rs2::frame color_frame,
+                                    rs2::frame depth_frame,
+                                    const rclcpp::Time& t,
+                                    const stream_index_pair& stream,
+                                    std::map<stream_index_pair, cv::Mat>& images,
+                                    const std::map<stream_index_pair, rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr>& info_publishers,
+                                    const std::map<stream_index_pair, std::shared_ptr<image_dds_publisher>>& image_dds_publishers,
+                                    const bool is_publishMetadata);
 
         void publishMetadata(rs2::frame f, const rclcpp::Time& header_time, const std::string& frame_id);
 
